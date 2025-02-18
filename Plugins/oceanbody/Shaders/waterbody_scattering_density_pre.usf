@@ -1,0 +1,76 @@
+#include "/Engine/Public/Platform.ush"
+
+
+
+#include "/Engine/Private/Common.ush"
+#include "unit_definitions.ush"
+#include "waterbody_constants.ush"
+#include "waterbody_definitions.ush"
+#include "waterbody_functions.ush"
+
+RadianceSpectrum ComputeScatteringDensity(
+    
+    Texture3D input_scattering_texture,
+    SamplerState sampler_input_scattering_texture,
+    Length r, Angle mu, Angle mu_s, Angle nu,
+    bool ray_r_mu_intersects_ground) {
+
+    float3 omega = float3(sin(mu), 0.0, cos(mu));
+    Number sun_dir_x = omega.x == 0.0 ? 0.0 : (cos(nu) - cos(mu) * cos(mu_s)) / omega.x;
+    Number sun_dir_y = sqrt(max(sin(mu_s)*sin(mu_s) - sun_dir_x * sun_dir_x, 0.0));
+    float3 omega_s = float3(sun_dir_x, sun_dir_y, cos(mu_s));
+
+    const int ANGULAR_SAMPLE_COUNT = 16;
+    const Angle dphi = pi / Number(ANGULAR_SAMPLE_COUNT);
+    const Angle dtheta = pi / Number(ANGULAR_SAMPLE_COUNT);
+
+    float3 scattering = float3(0,0,0);
+    for (int l = 0; l <= ANGULAR_SAMPLE_COUNT; l++)
+    {
+        Angle theta = (Number(l) + 0.5) * dtheta;
+        Number cos_theta = cos(theta);
+        Number sin_theta = sin(theta);
+        for (int m = 0; m <= 2*ANGULAR_SAMPLE_COUNT; m++)
+        {
+            Angle phi = (Number(m) + 0.5) * dphi;
+            float3 omega_i =
+                float3(cos(phi) * sin_theta, sin(phi) * sin_theta, cos_theta);
+            SolidAngle domega_i = (dtheta / rad) * (dphi / rad) * sin(theta) * sr;
+            Angle nu1 = acos(clamp(dot(omega_s, omega_i), -1, 1));
+            float3 in_scattering = GetScattering( input_scattering_texture,sampler_input_scattering_texture, r, theta, mu_s, nu1, false);
+            scattering += in_scattering * domega_i * Phase( dot(omega, omega_i)) * waterbody.total_scattering;
+        }
+    }
+
+    return scattering;
+}
+
+RadianceSpectrum ComputeScatteringDensityTexture(
+    
+    Texture3D scattering_texture_input,
+    SamplerState sampler_scattering_texture_input,
+    float3 frag_coord) {
+  Length r;
+  Angle mu;
+  Angle mu_s;
+  Angle nu;
+  bool ray_r_mu_intersects_ground;
+  GetRMuMuSNuFromScatteringTextureFragCoord( frag_coord,
+      r, mu, mu_s, nu, ray_r_mu_intersects_ground);
+  return ComputeScatteringDensity( 
+      scattering_texture_input, sampler_scattering_texture_input, r, mu, mu_s, nu,
+      ray_r_mu_intersects_ground);
+}
+
+
+Texture3D ScatteringLUT_Input;
+SamplerState sampler_ScatteringLUT_Input;
+// 声明一个可读写的3D纹理，格式为RGBA32F，绑定点为0
+RWTexture3D<float4> ScatteringDensityLUT_Output : register(u0);
+[numthreads(8, 8, 8)]
+void MainCS(uint3 id : SV_DispatchThreadID)
+{
+    float3 frag_coord = float3(id) + float3(0.5,0.5,0.5);
+    float3 scattring_density = ComputeScatteringDensityTexture( ScatteringLUT_Input, sampler_ScatteringLUT_Input, frag_coord);
+    ScatteringDensityLUT_Output[id] = float4(scattring_density, 0);
+}

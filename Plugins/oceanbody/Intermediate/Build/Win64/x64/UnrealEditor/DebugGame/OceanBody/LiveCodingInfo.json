@@ -1,0 +1,9 @@
+{
+	"RemapUnityFiles": 
+	{
+		"Module.OceanBody.cpp.obj": [
+			"OceanBody.cpp.obj",
+			"oceanComputeShader.cpp.obj"
+		]
+	}
+}

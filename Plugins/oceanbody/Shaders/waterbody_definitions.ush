@@ -1,0 +1,23 @@
+// #pragma once
+// const struct FWaterbodyParameters
+// {
+// 	float water_depth;
+// 	float fog_density;
+// 	float zeta;
+// 	float gf;
+// 	float gb;
+// 	float hdr_exposure;
+// 	 float3 pure_water_scattering;
+// 	float3 minerals_scattering;
+// 	float3 phytoplankton_scattering;
+// 	
+// 	float3 pure_water_absorbtion;
+// 	float3 minerals_absorbtion;
+// 	float3 phytoplankton_absorbtion;
+// 	float3 CDOM_absorbtion;
+// 	
+// 	float3 total_scattering;	// = pure_water_scattering + minerals_scattering + phytoplankton_scattering
+// 	float3 total_absorbtion;	// = pure_water_absorbtion + minerals_absorbtion + phytoplankton_absorbtion + CDOM_absorbtion
+// 	float3 total_extinction;	// = total_scattering + total_absorbtion
+// };
+// //FWaterbodyParameters WATERBODY;

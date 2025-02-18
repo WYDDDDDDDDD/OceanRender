@@ -1,0 +1,8 @@
+{
+	"BuildId": "5e1bd857-7d81-4777-a05f-a4e027b8eea9",
+	"Modules": 
+	{
+		"EditorModule": "UnrealEditor-EditorModule.dll",
+		"OceanBody": "UnrealEditor-OceanBody.dll"
+	}
+}

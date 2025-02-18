@@ -1,0 +1,61 @@
+
+
+#include "/Engine/Public/Platform.ush"
+#include "waterbody_constants.ush"
+
+// DECLARE_SCALAR_ARRAY(Texture3D, MultiScatteringLUTs, NUM_SCATTERING_ORDERS);
+// DECLARE_SCALAR_ARRAY(Texture3D, ScatteringDensityLUTs, NUM_SCATTERING_ORDERS);
+// DECLARE_SCALAR_ARRAY(SamplerState, sampler_MultiScatteringLUTs, NUM_SCATTERING_ORDERS);
+// DECLARE_SCALAR_ARRAY(SamplerState, sampler_ScatteringDensityLUTs, NUM_SCATTERING_ORDERS);
+//Texture3D MultiScatteringLUTs[NUM_SCATTERING_ORDERS];
+// Texture3D ScatteringDensityLUTs[NUM_SCATTERING_ORDERS];
+// SamplerState sampler_MultiScatteringLUTs[NUM_SCATTERING_ORDERS];
+// SamplerState sampler_ScatteringDensityLUTs[NUM_SCATTERING_ORDERS];
+Texture3D MultiScatteringLUTs_1;
+Texture3D MultiScatteringLUTs_2;
+Texture3D MultiScatteringLUTs_3;
+Texture3D MultiScatteringLUTs_0;
+SamplerState sampler_MultiScatteringLUTs_1;
+SamplerState sampler_MultiScatteringLUTs_2;
+SamplerState sampler_MultiScatteringLUTs_3;
+SamplerState sampler_MultiScatteringLUTs_0;
+Texture3D ScatteringDensityLUTs_1;
+Texture3D ScatteringDensityLUTs_2;
+Texture3D ScatteringDensityLUTs_3;
+Texture3D ScatteringDensityLUTs_0;
+SamplerState sampler_ScatteringDensityLUTs_1;
+SamplerState sampler_ScatteringDensityLUTs_2;
+SamplerState sampler_ScatteringDensityLUTs_3;
+SamplerState sampler_ScatteringDensityLUTs_0;
+RWTexture3D<float4> ScatteringLUT ;
+RWTexture3D<float4> MultiScatteringDensityLUT;
+[numthreads(8, 8, 8)]
+void MainCS(uint3 id : SV_DispatchThreadID)
+{
+    float3 frag_coord = float3(id) + float3(0.5,0.5,0.5);
+    float3 scattering_texture_size = float3(WATER_SCATTERING_TEXTURE_WIDTH, WATER_SCATTERING_TEXTURE_HEIGHT, WATER_SCATTERING_TEXTURE_DEPTH);
+    float3 uv = frag_coord / scattering_texture_size;
+    float3 value = float3(0,0,0);
+    float3 density = float3(0,0,0);
+    value += MultiScatteringLUTs_1.Sample(sampler_MultiScatteringLUTs_1, uv).rgb;
+    density += ScatteringDensityLUTs_1.Sample(sampler_ScatteringDensityLUTs_1, uv).rgb;
+    value += MultiScatteringLUTs_2.Sample(sampler_MultiScatteringLUTs_2, uv).rgb;
+    density += ScatteringDensityLUTs_2.Sample(sampler_ScatteringDensityLUTs_2, uv).rgb;
+    value += MultiScatteringLUTs_3.Sample(sampler_MultiScatteringLUTs_3, uv).rgb;
+    density += ScatteringDensityLUTs_3.Sample(sampler_ScatteringDensityLUTs_3, uv).rgb;
+    value += MultiScatteringLUTs_0.Sample(sampler_MultiScatteringLUTs_0, uv).rgb;
+    density += ScatteringDensityLUTs_0.Sample(sampler_ScatteringDensityLUTs_0, uv).rgb;
+    // for (int i = 0; i < NUM_SCATTERING_ORDERS; i++)
+    // {
+    //     value += MultiScatteringLUTs_i.Sample(sampler_MultiScatteringLUTs[i], uv).rgb;
+    //     //value += MultiScatteringLUTs[i].Sample(sampler_MultiScatteringLUTs[i], uv).rgb;
+    //     density += GET_SCALAR_ARRAY_ELEMENT(ScatteringDensityLUTs, i).Sample(GET_SCALAR_ARRAY_ELEMENT(sampler_ScatteringDensityLUTs,i), uv).rgb;
+    //     //density += ScatteringDensityLUTs[i].Sample(sampler_ScatteringDensityLUTs[i], uv).rgb;
+    // }
+//    value += texture(MultiScatteringLUTs[0], uv).rgb;
+//    value += texture(MultiScatteringLUTs[1], uv).rgb;
+//    value += texture(MultiScatteringLUTs[2], uv).rgb;
+//    value += texture(MultiScatteringLUTs[3], uv).rgb;
+    ScatteringLUT[id] = float4(value,0);
+    MultiScatteringDensityLUT[id] = float4(density, 0);
+}

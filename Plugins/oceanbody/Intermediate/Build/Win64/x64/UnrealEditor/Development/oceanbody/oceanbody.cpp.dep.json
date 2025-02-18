@@ -1,0 +1,14 @@
+{
+    "Version": "1.2",
+    "Data": {
+        "Source": "d:\\unrealprojects\\ocean1\\plugins\\oceanbody\\source\\oceanbody\\private\\oceanbody.cpp",
+        "ProvidedModule": "",
+        "PCH": "c:\\unrealengine-5.2\\engine\\intermediate\\build\\win64\\x64\\unrealeditor\\development\\engine\\sharedpch.engine.shadowerrors.inclorderunreal5_0.h.pch",
+        "Includes": [
+            "d:\\unrealprojects\\ocean1\\plugins\\oceanbody\\intermediate\\build\\win64\\x64\\unrealeditor\\development\\oceanbody\\definitions.oceanbody.h",
+            "d:\\unrealprojects\\ocean1\\plugins\\oceanbody\\source\\oceanbody\\public\\oceanbody.h"
+        ],
+        "ImportedModules": [],
+        "ImportedHeaderUnits": []
+    }
+}

@@ -1,0 +1,107 @@
+#include "/Engine/Public/Platform.ush"
+
+
+#include "/Engine/Private/Common.ush"
+#include "unit_definitions.ush"
+#include "waterbody_constants.ush"
+#include "waterbody_definitions.ush"
+#include "waterbody_functions.ush"
+
+
+
+
+void ComputeSingleScatteringIntegrand(
+    Length r, Angle mu, Angle mu_s, Angle nu, Length d,
+    out DimensionlessSpectrum transmittance) {
+  Length r_d = cos(mu) * d + r;
+  Number mu_s_d = mu_s;
+  transmittance =
+      GetTransmittance(d) *
+      GetTransmittanceToWaterSurface(
+          r_d, mu_s_d);
+}
+
+void ComputeSingleScattering(
+    Length r, Angle mu, Angle mu_s, Angle nu,
+    bool ray_r_mu_intersects_bottom,
+    out IrradianceSpectrum singlescattering) {
+//  const int SAMPLE_COUNT = 100;
+    
+//  Length dx = DistanceToNearestWaterbodyBoundary(waterbody, r, mu, ray_r_mu_intersects_bottom) / Number(SAMPLE_COUNT);
+//
+//  DimensionlessSpectrum transmittance_sum = DimensionlessSpectrum(0.0);
+//  for (int i = 0; i <= SAMPLE_COUNT; ++i) {
+//    Length d_i = Number(i) * dx;
+//    DimensionlessSpectrum transmittance;
+//    ComputeSingleScatteringIntegrand(waterbody,
+//        r, mu, mu_s, nu, d_i, transmittance);
+//    Number weight_i = (i == 0 || i == SAMPLE_COUNT) ? 0.5 : 1.0;
+//    transmittance_sum += transmittance * weight_i;
+//  }
+//  singlescattering = transmittance_sum * dx * Phase(waterbody, cos(nu))*//waterbody.solar_irradiance
+//      waterbody.total_scattering;
+    float dist = DistanceToNearestWaterbodyBoundary(r, mu, ray_r_mu_intersects_bottom);
+    float cos_mu = cos(mu);
+    float cos_mu_s = cos(mu_s);
+    float3 a = waterbody.total_extinction * (cos_mu_s-cos_mu) / cos_mu_s;
+    float3 b = waterbody.total_extinction * (waterbody.water_depth-r) / cos_mu_s;
+    float3 integral = exp(-b) * (1-exp(-a * dist)) / a;
+    singlescattering = integral * Phase(cos(nu)) * waterbody.total_scattering;
+}
+
+void ComputeSingleScatteringDensity(
+    Length r, Angle mu, Angle mu_s, Angle nu,
+    out float3 singlescattering_density) {
+
+    float3 transmittance = GetTransmittanceToWaterSurface(r, mu_s);
+    singlescattering_density = Phase(cos(nu)) * waterbody.total_scattering * transmittance;
+}
+
+void ComputeSingleScatteringTexture( float3 frag_coord,
+    out IrradianceSpectrum singlescattering, out float3 singlescattering_density) {
+    Length r;
+    Angle mu;
+    Angle mu_s;
+    Angle nu;
+    bool ray_r_mu_intersects_bottom;
+    GetRMuMuSNuFromScatteringTextureFragCoord( frag_coord,
+        r, mu, mu_s, nu, ray_r_mu_intersects_bottom);
+    ComputeSingleScattering(
+        r, mu, mu_s, nu, ray_r_mu_intersects_bottom, singlescattering);
+    float3 transmittance = GetTransmittanceToWaterSurface( r, mu_s);
+    singlescattering_density = Phase(cos(nu)) * waterbody.total_scattering * transmittance;
+}
+
+
+
+
+RWTexture3D<float4> SingleScatteringLUT;
+RWTexture3D<float4> SingleScatteringDensityLUT;
+[numthreads(8, 8, 8)]
+void MainCS(uint3 id : SV_DispatchThreadID)
+{
+	
+    //FWaterbodyParameters WATERBODY;
+    //IrradianceSpectrum singlescattering1 = WATERBODY.pure_water_scattering;
+    IrradianceSpectrum singlescattering = float3(id) + float3(0.5, 0.5, 0.5);
+    float3 singlescattering_density = float3(id) + float3(0.5, 0.5, 0.5);
+    float3 frag_coord = float3(id) + float3(0.5, 0.5, 0.5);
+   ComputeSingleScatteringTexture(frag_coord, singlescattering, singlescattering_density);
+//    Angle nu;
+//    Angle mu_s;
+//    Angle mu;
+//    Length r;
+//    bool ray_r_mu_intersects_bottom;
+//    GetRMuMuSNuFromScatteringTextureFragCoord(WATERBODY, frag_coord,
+//        r, mu, mu_s, nu, ray_r_mu_intersects_bottom);
+//    float3 transmittance;
+//    ComputeSingleScatteringIntegrand(WATERBODY,
+//        r, mu, mu_s, nu, 0, transmittance);
+//  Length dx =
+//      DistanceToNearestWaterbodyBoundary(WATERBODY, r, mu, ray_r_mu_intersects_bottom);
+    
+    SingleScatteringLUT[uint3(5,5,5)] = float4(singlescattering,0);
+    SingleScatteringDensityLUT[id.xyz] = float4(singlescattering_density, 0);
+     
+    // imageStore(SingleScatteringDensityLUT, ivec3(SV_DispatchThreadID), vec4(singlescattering_density, 0));
+}

@@ -1,0 +1,63 @@
+#include "/Engine/Public/Platform.ush"
+
+
+
+#include "/Engine/Private/Common.ush"
+#include "unit_definitions.ush"
+#include "waterbody_constants.ush"
+#include "waterbody_definitions.ush"
+#include "waterbody_functions.ush"
+
+RadianceSpectrum ComputeMultipleScattering(
+     
+    Texture3D input_scattering_density,
+    SamplerState sampler_input_scattering_density,
+    Length r, Angle mu, Angle mu_s, Angle nu,
+    bool ray_r_mu_intersects_ground) {
+
+    const int SAMPLE_COUNT = 100;
+    Length dx =
+        DistanceToNearestWaterbodyBoundary(
+             r, mu, ray_r_mu_intersects_ground) /
+                Number(SAMPLE_COUNT);
+    float3 scattering_sum = float3(0,0,0);
+    for (int i = 0; i <= SAMPLE_COUNT; ++i) {
+        Length d_i = Number(i) * dx;
+        Length r_d = cos(mu) * d_i + r;
+
+        float3 scattering = GetScattering( input_scattering_density,sampler_input_scattering_density, r_d, mu, mu_s, nu, false);
+
+        Number weight_i = (i == 0 || i == SAMPLE_COUNT) ? 0.5 : 1.0;
+        scattering_sum += scattering * weight_i * dx * GetTransmittance( d_i);
+    }
+    return scattering_sum;
+}
+
+RadianceSpectrum ComputeMultipleScatteringTexture(
+     
+    Texture3D scattering_texture_input,
+    SamplerState sampler_scattering_texture_input,
+    float3 frag_coord) {
+  Length r;
+  Angle mu;
+  Angle mu_s;
+  Angle nu;
+  bool ray_r_mu_intersects_ground;
+  GetRMuMuSNuFromScatteringTextureFragCoord( frag_coord,
+      r, mu, mu_s, nu, ray_r_mu_intersects_ground);
+  return ComputeMultipleScattering( 
+      scattering_texture_input, sampler_scattering_texture_input, r, mu, mu_s, nu,
+      ray_r_mu_intersects_ground);
+}
+
+
+Texture3D ScatteringDensityLUT;
+SamplerState sampler_ScatteringDensityLUT;
+RWTexture3D<float4> ScatteringLUT_Output;
+[numthreads(8, 8, 8)]
+void MainCS(uint3 id : SV_DispatchThreadID)
+{
+    float3 frag_coord = float3(id) + float3(0.5,0.5,0.5);
+    float3 multiscattring = ComputeMultipleScatteringTexture( ScatteringDensityLUT, sampler_ScatteringDensityLUT, frag_coord);
+    ScatteringLUT_Output[id] = float4(multiscattring, 0);
+}
