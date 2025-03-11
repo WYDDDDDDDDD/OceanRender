@@ -1,5 +1,5 @@
 ﻿#include "EditorModule.h"
-
+#include "RenderGraph.h"
 #include "Engine/VolumeTexture.h"
 #include "Templates/SharedPointer.h"
 #define LOCTEXT_NAMESPACE "FOceanEditorModule"
@@ -133,44 +133,67 @@ void FOceanEditorModule::Command_Tex()
 	{
 		UE_LOG(LogTemp, Log, TEXT("Loaded Texture"));
 	}
-	TArray<UTextureRenderTargetVolume*> MultiScatteringLUTs;
+	// TArray<UTextureRenderTargetVolume*> MultiScatteringLUTs;
+	// MultiScatteringLUTs.SetNum(NUM_SCATTERING_ORDERS+1);
+	// TArray<UTextureRenderTargetVolume*> ScatteringDensityLUTs;
+	// ScatteringDensityLUTs.SetNum(NUM_SCATTERING_ORDERS+1);
+	//
+	// for(size_t i = 0; i < NUM_SCATTERING_ORDERS; i++)
+	// {
+	// 	FString AssetPath_m = FString::Printf(TEXT("/Game/Resources/LUTs/MultiScatteringLUTs_%d"),  i);
+	// 	FSoftObjectPath TexturePath_m(AssetPath_m);
+	// 	if (Cast<UTextureRenderTargetVolume>(TexturePath_m.TryLoad()) == NULL)
+	// 	{
+	// 		UE_LOG(LogTemp, Error, TEXT("Failed to load texture"));
+	// 		
+	// 	}
+	// 	else
+	// 	{
+	// 		MultiScatteringLUTs[i] = Cast<UTextureRenderTargetVolume>(TexturePath_m.TryLoad());
+	// 	}
+	// 	
+	// 	//MultiScatteringLUTs[i] = Cast<UVolumeTexture>(TexturePath_m.TryLoad());
+	// 	FString AssetPath = FString::Printf(TEXT("/Game/Resources/LUTs/ScatteringDensityLUTs_%d"),  i);
+	// 	FSoftObjectPath TexturePath_s(AssetPath);
+	// 	//ScatteringDensityLUTs[i] = Cast<UTextureRenderTargetVolume>(TexturePath.TryLoad());
+	// 	ScatteringDensityLUTs[i] = Cast<UTextureRenderTargetVolume>(TexturePath_s.TryLoad());
+	// }
+	
+	
+	FWaterbodyParameters Waterbody;
+	oceanbodyModule->InitializeWaterbody(Waterbody);
+	ENQUEUE_RENDER_COMMAND(ComputeShader)(
+		[Waterbody,ScatteringLUT,MultiScatteringDensityLUT, this ]
+		(FRHICommandListImmediate& RHICmdList)
+	{
+			
+	FRDGBuilder GraphBuilder(RHICmdList);
+	TArray<FRDGTextureRef> MultiScatteringLUTs;
 	MultiScatteringLUTs.SetNum(NUM_SCATTERING_ORDERS+1);
-	TArray<UTextureRenderTargetVolume*> ScatteringDensityLUTs;
+	TArray<FRDGTextureRef> ScatteringDensityLUTs;
 	ScatteringDensityLUTs.SetNum(NUM_SCATTERING_ORDERS+1);
 	
 	for(size_t i = 0; i < NUM_SCATTERING_ORDERS; i++)
 	{
-		FString AssetPath_m = FString::Printf(TEXT("/Game/Resources/LUTs/MultiScatteringLUTs_%d"),  i);
-		FSoftObjectPath TexturePath_m(AssetPath_m);
-		if (Cast<UTextureRenderTargetVolume>(TexturePath_m.TryLoad()) == NULL)
-		{
-			UE_LOG(LogTemp, Error, TEXT("Failed to load texture"));
-			
-		}
-		else
-		{
-			MultiScatteringLUTs[i] = Cast<UTextureRenderTargetVolume>(TexturePath_m.TryLoad());
-		}
+
+		FRDGTextureDesc OutTextureDesc = FRDGTextureDesc::Create3D(
+		FIntVector(256, 128, 128),
+		PF_FloatRGBA,
+		FClearValueBinding(),
+		TexCreate_UAV,//unordered view
+		1,
+		1);
+		FString AssetPath_m = FString::Printf(TEXT("MultiScatteringLUTs_%d"),  i);
+		FString AssetPath_d = FString::Printf(TEXT("ScatteringDensityLUTs_%d"),  i);
+		// 2. Allocate memory with above desc and get a ref to it
+		MultiScatteringLUTs[i] = GraphBuilder.CreateTexture(OutTextureDesc, *AssetPath_m);
+		ScatteringDensityLUTs[i] = GraphBuilder.CreateTexture(OutTextureDesc, *AssetPath_d);
 		
-		//MultiScatteringLUTs[i] = Cast<UVolumeTexture>(TexturePath_m.TryLoad());
-		FString AssetPath = FString::Printf(TEXT("/Game/Resources/LUTs/ScatteringDensityLUTs_%d"),  i);
-		FSoftObjectPath TexturePath_s(AssetPath);
-		//ScatteringDensityLUTs[i] = Cast<UTextureRenderTargetVolume>(TexturePath.TryLoad());
-		ScatteringDensityLUTs[i] = Cast<UTextureRenderTargetVolume>(TexturePath_s.TryLoad());
 	}
-	
-	
-	FWaterbodyParameters Waterbody;
-	
-	ENQUEUE_RENDER_COMMAND(ComputeShader)(
-		[MultiScatteringLUTs, ScatteringDensityLUTs,Waterbody,ScatteringLUT,MultiScatteringDensityLUT, this ]
-		(FRHICommandListImmediate& RHICmdList)
-	{
-			
-			TArray<FRHITexture*> MultiScatteringLUTs_RHI;
+		TArray<FRDGTextureRef> MultiScatteringLUTs_RHI;
 		MultiScatteringLUTs_RHI.Reserve(NUM_SCATTERING_ORDERS+1);
 		MultiScatteringLUTs_RHI.SetNum(NUM_SCATTERING_ORDERS);
-		TArray<FRHITexture* > ScatteringDensityLUTs_RHI;
+		TArray<FRDGTextureRef> ScatteringDensityLUTs_RHI;
 		ScatteringDensityLUTs_RHI.Reserve(NUM_SCATTERING_ORDERS+1);
 		ScatteringDensityLUTs_RHI.SetNum(NUM_SCATTERING_ORDERS);
 		TArray<FRHISamplerState*> MultiSamplerState, DensitySamplerState;
@@ -178,22 +201,22 @@ void FOceanEditorModule::Command_Tex()
 		DensitySamplerState.Reserve(NUM_SCATTERING_ORDERS+1);
 		MultiSamplerState.SetNum(NUM_SCATTERING_ORDERS);
 		DensitySamplerState.SetNum(NUM_SCATTERING_ORDERS);
-		oceanbodyModule->EnqueueRenderCommand(MultiScatteringLUTs[0], ScatteringDensityLUTs[0], Waterbody,RHICmdList);
+		oceanbodyModule->EnqueueRenderCommand(MultiScatteringLUTs[0], ScatteringDensityLUTs[0], Waterbody,GraphBuilder);
 		for(size_t scattering_order = 2; scattering_order <= NUM_SCATTERING_ORDERS; scattering_order++)
 		{
 			int LUTs_index = scattering_order - 1;
-			oceanbodyModule->EnqueueRenderCommand_d(MultiScatteringLUTs[LUTs_index-1]->Resource->TextureRHI,TStaticSamplerState<SF_Bilinear, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI(),ScatteringDensityLUTs[LUTs_index],Waterbody,RHICmdList);
-			oceanbodyModule->EnqueueRenderCommand_m(ScatteringDensityLUTs[LUTs_index]->Resource->TextureRHI, TStaticSamplerState<SF_Bilinear, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI(), MultiScatteringLUTs[LUTs_index], Waterbody,RHICmdList);
+			oceanbodyModule->EnqueueRenderCommand_d(MultiScatteringLUTs[LUTs_index-1],TStaticSamplerState<SF_Bilinear, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI(),ScatteringDensityLUTs[LUTs_index],Waterbody,GraphBuilder);
+			oceanbodyModule->EnqueueRenderCommand_m(ScatteringDensityLUTs[LUTs_index], TStaticSamplerState<SF_Bilinear, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI(), MultiScatteringLUTs[LUTs_index], Waterbody,GraphBuilder);
 		}
 		for(size_t i = 0; i<NUM_SCATTERING_ORDERS; i++)
 		{
 			
-			MultiScatteringLUTs_RHI[i] = MultiScatteringLUTs[i]->Resource->TextureRHI.GetReference();
-			ScatteringDensityLUTs_RHI[i] = ScatteringDensityLUTs[i]->Resource->TextureRHI.GetReference();
+			MultiScatteringLUTs_RHI[i] = MultiScatteringLUTs[i];
+			ScatteringDensityLUTs_RHI[i] = ScatteringDensityLUTs[i];
 			DensitySamplerState[i] = TStaticSamplerState<SF_Point, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI();
 			MultiSamplerState[i] = TStaticSamplerState<SF_Point, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI();
 		}
-		oceanbodyModule->EnqueueRenderCommand_s(MultiScatteringLUTs_RHI, ScatteringDensityLUTs_RHI, MultiSamplerState, DensitySamplerState, ScatteringLUT, MultiScatteringDensityLUT,RHICmdList);
+		oceanbodyModule->EnqueueRenderCommand_s(MultiScatteringLUTs_RHI, ScatteringDensityLUTs_RHI, MultiSamplerState, DensitySamplerState, ScatteringLUT, MultiScatteringDensityLUT,GraphBuilder);
 	});
 	
 	

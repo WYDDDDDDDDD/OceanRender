@@ -100,7 +100,7 @@ void MainCS(uint3 id : SV_DispatchThreadID)
 //  Length dx =
 //      DistanceToNearestWaterbodyBoundary(WATERBODY, r, mu, ray_r_mu_intersects_bottom);
     
-    SingleScatteringLUT[uint3(5,5,5)] = float4(singlescattering,0);
+    SingleScatteringLUT[id.xyz] = float4(singlescattering,0);
     SingleScatteringDensityLUT[id.xyz] = float4(singlescattering_density, 0);
      
     // imageStore(SingleScatteringDensityLUT, ivec3(SV_DispatchThreadID), vec4(singlescattering_density, 0));

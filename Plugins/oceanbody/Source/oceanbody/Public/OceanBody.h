@@ -14,13 +14,16 @@ public:
 	/** IModuleInterface implementation */
 	virtual void StartupModule() override;
 	virtual void ShutdownModule() override;
+
+	void InitializeWaterbody(FWaterbodyParameters& WaterBody);
+	void UpdateWaterbody(FWaterbodyParameters& WaterBody);
 	//void CreateToolbarButton();
 	void OnGenerateTextureClicked();
-	void EnqueueRenderCommand(UTextureRenderTargetVolume* RenderTarget, UTextureRenderTargetVolume* RenderTarget_d, FWaterbodyParameters WaterBody,FRHICommandListImmediate& RHICmdList);
-	void EnqueueRenderCommand_m(FRHITexture* ScatteringDensityLUTTexture, FRHISamplerState* SamplerState, UTextureRenderTargetVolume* RenderTarget,FWaterbodyParameters WaterBody,FRHICommandListImmediate& RHICmdList);
-	void EnqueueRenderCommand_d(FRHITexture* ScatteringLUT_InputTexture, FRHISamplerState* SamplerState, UTextureRenderTargetVolume* RenderTarget,FWaterbodyParameters WaterBody,FRHICommandListImmediate& RHICmdList);
-	void EnqueueRenderCommand_s(const TArray<FRHITexture*> &MultiScatteringLUTsTexture, const TArray<FRHITexture*> &ScatteringDensityLUTsTexture, const TArray<FRHISamplerState*> &MultiSamplerState,
-		const TArray<FRHISamplerState*> &DensitySamplerState,  UTextureRenderTargetVolume* RenderTarget, UTextureRenderTargetVolume* RenderTarget_m,FRHICommandListImmediate& RHICmdList);
+	void EnqueueRenderCommand(FRDGTextureRef RenderTarget, FRDGTextureRef RenderTarget_d, FWaterbodyParameters WaterBody,FRDGBuilder& GraphBuilder);
+	void EnqueueRenderCommand_m(FRDGTextureRef ScatteringDensityLUTTexture, FRHISamplerState* SamplerState, FRDGTextureRef RenderTarget,FWaterbodyParameters WaterBody,FRDGBuilder& GraphBuilder);
+	void EnqueueRenderCommand_d(FRDGTextureRef ScatteringLUT_InputTexture, FRHISamplerState* SamplerState, FRDGTextureRef RenderTarget,FWaterbodyParameters WaterBody,FRDGBuilder& GraphBuilder);
+	void EnqueueRenderCommand_s(const TArray<FRDGTextureRef> &MultiScatteringLUTsTexture, const TArray<FRDGTextureRef> &ScatteringDensityLUTsTexture, const TArray<FRHISamplerState*> &MultiSamplerState,
+		const TArray<FRHISamplerState*> &DensitySamplerState,  UTextureRenderTargetVolume* RenderTarget, UTextureRenderTargetVolume* RenderTarget_m,FRDGBuilder& GraphBuilder);
 private:
 };
 struct CommandInfo

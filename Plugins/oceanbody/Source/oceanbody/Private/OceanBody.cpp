@@ -14,7 +14,6 @@
 
 #define LOCTEXT_NAMESPACE "FoceanbodyModule"
 
-//FShaderParametersMetadata FWaterbodyParameters::StaticStructMetadata;
 
 
 
@@ -33,75 +32,59 @@ void FoceanbodyModule::StartupModule()
 	AddShaderSourceDirectoryMapping(TEXT("/oceanbody/Shaders"), PluginShaderDir);
 	
 	// This code will execute after your module is loaded into memory; the exact timing is specified in the .uplugin file per-module
-	//FOceanCommand::Register();
-	//CreateToolbarButton();
+	
 }
 
 void FoceanbodyModule::ShutdownModule()
 {
 	// This function may be called during shutdown to clean up your module.  For modules that support dynamic reloading,
 	// we call this function before unloading the module.
-	//FOceanCommand::Unregister();
+	
 }
 
-// void FoceanbodyModule::CreateToolbarButton()
-// {
-// 	
-// 	// const ISlateStyle* CoreStyle2 = &FCoreStyle::GetCoreStyle();
-// 	//  const ISlateStyle& CoreStyle1 =FCoreStyle::GetCoreStyle();
-// 	// const FName CoreStyle = CoreStyle1.GetStyleSetName() ;
-// 	// if (CoreStyle2&&CoreStyle!="" )
-// 	// {
-// 	// 	UE_LOG(LogTemp, Log, TEXT("CoreStyle is available."));
-// 	// }
-// 	// else
-// 	// {
-// 	// 	UE_LOG(LogTemp, Warning, TEXT("CoreStyle is not available."));
-// 	// }
-// 	
-// 	// Bind command
-// 	
-//  //-------------------------OnGenerateTextureClicked的按钮————————————————————————————————————————————————————————————————————
-// 	// 注册一个命令 (例如，点击按钮时执行的函数)
-// 	CommandList = MakeShareable(new FUICommandList);
-// 	CommandList->MapAction(
-// 		FOceanCommand::Get().CommandA,
-// 		FExecuteAction::CreateRaw(this, &FoceanbodyModule::OnGenerateTextureClicked),
-// 		FCanExecuteAction()
-// 	);
-// 	
-// 	// 获取 LevelEditor 模块
-// 	
-// 	  //FModuleManager::GetModulePtr<FLevelEditorModule>("LevelEditor");
-//
-// 	
-// 	TSharedPtr<FExtender> ToolbarExtender = MakeShareable(new FExtender);
-//  
-// 	ToolbarExtender->AddToolBarExtension(
-// 		"Content",
-// 		EExtensionHook::After,
-// 		CommandList,
-// 		FToolBarExtensionDelegate::CreateLambda([this](FToolBarBuilder& ToolbarBuilder)
-// 		{
-// 			ToolbarBuilder.AddToolBarButton(
-// 			   FUIAction(
-// 				   FExecuteAction::CreateRaw(this, &FoceanbodyModule::OnGenerateTextureClicked)
-// 			   ),
-// 			   NAME_None,
-// 			   FText::FromString(TEXT("Generate Texture")),
-// 			   FText::FromString(TEXT("Generates the texture for the shader")),
-// 			   FSlateIcon(FAppStyle::GetAppStyleSetName(), "LevelEditor.Build")
-// 		   );
-// 		})
-// 	);
-// 	FLevelEditorModule* pLevelEditorModule =FModuleManager::GetModulePtr<FLevelEditorModule>(FName(TEXT("LevelEditor")));
-// 	//FLevelEditorModule& pLevelEditorModule =FModuleManager::LoadModuleChecked<FLevelEditorModule>("LevelEditor");
-// 	pLevelEditorModule->GetToolBarExtensibilityManager()->AddExtender(ToolbarExtender);
-//
-// 	
-// }
+void FoceanbodyModule::InitializeWaterbody(FWaterbodyParameters& WaterBody)
+{
+	WaterBody.water_depth = 200;
+	WaterBody.fog_density = 1.f;
+	WaterBody.zeta = 0.75;     // 前向散射的比例
+	WaterBody.gf = 0.62;       // 前向散射HG相位函数中的g，范围[0, 1]
+	WaterBody.gb = -0.2;      // 后向散射HG相位函数中的g，范围[-1, 0]
+	WaterBody.hdr_exposure = 10;
+	WaterBody.C = 0.01;
+	WaterBody.absorbtion_d_400nm = 0.0f;
+	WaterBody.absorbtion_y_440nm = 0.0f;
 
- void FoceanbodyModule::OnGenerateTextureClicked()
+	
+	WaterBody.CDOM_absorbtion = FVector3f(0.034735f, 0.214381f, 1.0f) * WaterBody.absorbtion_y_440nm;
+	WaterBody.minerals_absorbtion = FVector3f(0.045959f, 0.192050f, 0.644036f) * WaterBody.absorbtion_d_400nm;
+	WaterBody.minerals_scattering = FVector3f(0.0635f, 0.075f, 0.09f);
+	WaterBody.phytoplankton_absorbtion = FVector3f(0.015f, 0.01f, 0.035f) * WaterBody.C;
+	WaterBody.phytoplankton_scattering = FVector3f(0.24264f, 0.3f, 0.375f) * FMath::Pow(WaterBody.C, 0.62f);
+	WaterBody.pure_water_absorbtion = FVector3f(0.45f, 0.0638f, 0.0145f);
+	WaterBody.pure_water_scattering = FVector3f(0.0007f, 0.0015f, 0.0038f);    // from Optical properties of the clearest natural waters
+
+	WaterBody.total_scattering = WaterBody.pure_water_scattering + WaterBody.minerals_scattering + WaterBody.phytoplankton_scattering;
+	WaterBody.total_absorbtion = WaterBody.pure_water_absorbtion + WaterBody.minerals_absorbtion + WaterBody.phytoplankton_absorbtion + WaterBody.CDOM_absorbtion;
+	WaterBody.total_extinction = WaterBody.total_scattering + WaterBody.total_absorbtion;
+}
+
+void FoceanbodyModule::UpdateWaterbody(FWaterbodyParameters& WaterBody)
+{
+	
+	WaterBody.CDOM_absorbtion = FVector3f(0.034735f, 0.214381f, 1.0f) * WaterBody.absorbtion_y_440nm;
+	WaterBody.minerals_absorbtion = FVector3f(0.045959f, 0.192050f, 0.644036f) * WaterBody.absorbtion_d_400nm;
+	WaterBody.phytoplankton_absorbtion = FVector3f(0.015f, 0.01f, 0.035f) * WaterBody.C;
+	WaterBody.phytoplankton_scattering = FVector3f(0.24264f, 0.3f, 0.375f) * FMath::Pow(WaterBody.C, 0.62f);
+
+	
+	WaterBody.total_scattering = WaterBody.pure_water_scattering + WaterBody.minerals_scattering + WaterBody.phytoplankton_scattering;
+	WaterBody.total_absorbtion = WaterBody.pure_water_absorbtion + WaterBody.minerals_absorbtion + WaterBody.phytoplankton_absorbtion + WaterBody.CDOM_absorbtion;
+	WaterBody.total_extinction = WaterBody.total_scattering + WaterBody.total_absorbtion;
+	
+}
+
+
+void FoceanbodyModule::OnGenerateTextureClicked()
 {
 	// 获取并加载纹理的代码
 	FSoftObjectPath TexturePath(TEXT("Texture3D'/Content/Resources/SingleScatteringLUT.raw'"));
@@ -121,17 +104,15 @@ void FoceanbodyModule::ShutdownModule()
 	UE_LOG(LogTemp, Log, TEXT("Shader Complete"));
 }
 
-void FoceanbodyModule::EnqueueRenderCommand(UTextureRenderTargetVolume* RenderTarget, UTextureRenderTargetVolume* RenderTarget_d, FWaterbodyParameters WaterBody,FRHICommandListImmediate& RHICmdList)
+void FoceanbodyModule::EnqueueRenderCommand(FRDGTextureRef RenderTarget, FRDGTextureRef RenderTarget_d, FWaterbodyParameters WaterBody,FRDGBuilder& GraphBuilder)
 {
 	TShaderMapRef<FOceanCS> ComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
-
-	UTextureRenderTargetVolume* RenderTargetParam = RenderTarget;
-	UTextureRenderTargetVolume* RenderTarget_dParam = RenderTarget_d;
+	
 	ComputeShader->BuildAndExecuteGraph(
-				RHICmdList,
+				GraphBuilder,
 				WaterBody,
-				RenderTargetParam,
-				RenderTarget_dParam
+				RenderTarget,
+				RenderTarget_d
 				);
 
 	// ENQUEUE_RENDER_COMMAND(ComputeShader)(
@@ -151,21 +132,18 @@ void FoceanbodyModule::EnqueueRenderCommand(UTextureRenderTargetVolume* RenderTa
 	// 	});
 }
 
-void FoceanbodyModule::EnqueueRenderCommand_m(FRHITexture* ScatteringDensityLUTTexture, FRHISamplerState* SamplerState,
-	UTextureRenderTargetVolume* RenderTarget,FWaterbodyParameters WaterBody,FRHICommandListImmediate& RHICmdList)
+void FoceanbodyModule::EnqueueRenderCommand_m(FRDGTextureRef ScatteringDensityLUTTexture, FRHISamplerState* SamplerState,
+	FRDGTextureRef RenderTarget,FWaterbodyParameters WaterBody,FRDGBuilder& GraphBuilder)
 {
 	TShaderMapRef<FOceanCS_m> ComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
-
-	UTextureRenderTargetVolume* RenderTargetParam = RenderTarget;
-	FRHITexture* ScatteringDensityLUTTexture_Param = ScatteringDensityLUTTexture;
 	//TUniformBufferRef<FWaterbodyParameters>& UniformBuffer = getUniform(WaterBody);
 	FRHISamplerState* SamplerState_Param = SamplerState;
 	ComputeShader->BuildAndExecuteGraph(
-				RHICmdList,
+				GraphBuilder,
 				WaterBody,
-				ScatteringDensityLUTTexture_Param,
+				ScatteringDensityLUTTexture,
 				SamplerState_Param,
-				RenderTargetParam
+				RenderTarget
 				);
 // 	ENQUEUE_RENDER_COMMAND(ComputeShader)(
 // 		[
@@ -186,20 +164,18 @@ void FoceanbodyModule::EnqueueRenderCommand_m(FRHITexture* ScatteringDensityLUTT
 // 		});
  }
 
-void FoceanbodyModule::EnqueueRenderCommand_d(FRHITexture* ScatteringLUT_InputTexture, FRHISamplerState* SamplerState,
-	UTextureRenderTargetVolume* RenderTarget, FWaterbodyParameters WaterBody,FRHICommandListImmediate& RHICmdList)
+void FoceanbodyModule::EnqueueRenderCommand_d(FRDGTextureRef ScatteringLUT_InputTexture, FRHISamplerState* SamplerState,
+	FRDGTextureRef RenderTarget, FWaterbodyParameters WaterBody,FRDGBuilder& GraphBuilder)
 {
 	TShaderMapRef<FOceanCS_d> ComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
-
-	UTextureRenderTargetVolume* RenderTargetParam = RenderTarget;
-	FRHITexture* ScatteringLUT_InputTexture_Param = ScatteringLUT_InputTexture;
+	
 	//TUniformBufferRef<FWaterbodyParameters>& UniformBuffer = getUniform(WaterBody);
 	ComputeShader->BuildAndExecuteGraph(
-				RHICmdList,
+				GraphBuilder,
 				WaterBody,
-				ScatteringLUT_InputTexture_Param,
+				ScatteringLUT_InputTexture,
 				SamplerState,
-				RenderTargetParam
+				RenderTarget
 				);
 	// ENQUEUE_RENDER_COMMAND(ComputeShader)(
 	// 	[
@@ -221,13 +197,13 @@ void FoceanbodyModule::EnqueueRenderCommand_d(FRHITexture* ScatteringLUT_InputTe
 	
 }
 
-void FoceanbodyModule::EnqueueRenderCommand_s(const TArray<FRHITexture*>& MultiScatteringLUTsTexture,
-	const TArray<FRHITexture*>& ScatteringDensityLUTsTexture, const TArray<FRHISamplerState*>& MultiSamplerState,
-	const TArray<FRHISamplerState*>& DensitySamplerState, UTextureRenderTargetVolume* RenderTarget, UTextureRenderTargetVolume* RenderTarget_m,FRHICommandListImmediate& RHICmdList)
+void FoceanbodyModule::EnqueueRenderCommand_s(const TArray<FRDGTextureRef>& MultiScatteringLUTsTexture,
+	const TArray<FRDGTextureRef>& ScatteringDensityLUTsTexture, const TArray<FRHISamplerState*>& MultiSamplerState,
+	const TArray<FRHISamplerState*>& DensitySamplerState, UTextureRenderTargetVolume* RenderTarget, UTextureRenderTargetVolume* RenderTarget_m,FRDGBuilder& GraphBuilder)
 {
 	TShaderMapRef<FOceanCS_s> ComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
 	ComputeShader->BuildAndExecuteGraph(
-				RHICmdList,
+				GraphBuilder,
 				MultiScatteringLUTsTexture,
 				ScatteringDensityLUTsTexture,
 				MultiSamplerState,

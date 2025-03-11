@@ -12,11 +12,11 @@ IMPLEMENT_GLOBAL_SHADER(FOceanCS_d, "/oceanbody/Shaders/waterbody_scattering_den
 IMPLEMENT_GLOBAL_SHADER(FOceanCS_s, "/oceanbody/Shaders/waterbody_scattering_synthesize_pre.usf", "MainCS", SF_Compute);
 
 //IMPLEMENT_UNIFORM_BUFFER_STRUCT(FWaterbodyParameters, "FWaterbodyParametersdistributed under the License is distributed on an "AS IS" BASIS,");
-void FOceanCS::BuildAndExecuteGraph(FRHICommandListImmediate& RHICmdList,FWaterbodyParameters WaterBody, UTextureRenderTargetVolume* RenderTarget, UTextureRenderTargetVolume* RenderTarget_d)
+void FOceanCS::BuildAndExecuteGraph(FRDGBuilder& GraphBuilder,FWaterbodyParameters WaterBody, FRDGTextureRef RenderTarget, FRDGTextureRef RenderTarget_d)
 {
 	// Our main point of contant with the RDG
 	// We will use this to add resources (buffers) and passes to the render-graph
-	FRDGBuilder GraphBuilder(RHICmdList);
+	
 	
 
 	// This is a pointer to the shader-parameters we declared in the .h
@@ -28,38 +28,39 @@ void FOceanCS::BuildAndExecuteGraph(FRHICommandListImmediate& RHICmdList,FWaterb
 
 	// --- Creating a texture for the compute shader to write to SingleScatteringLUT---
 	// 1. Make a texture description 
-	FRDGTextureDesc OutTextureDesc = FRDGTextureDesc::Create3D(
-		FIntVector(RenderTarget->SizeX, RenderTarget->SizeY, RenderTarget->SizeZ),
-		PF_FloatRGBA,
-		FClearValueBinding(),
-		TexCreate_UAV,//unordered view
-		1,
-		1); 
-	// 2. Allocate memory with above desc and get a ref to it
-	FRDGTextureRef OutTextureRef = GraphBuilder.CreateTexture(OutTextureDesc, TEXT("SingleScatteringLUT"));
-	// 3. Make a UAV description from our Texture Ref
-	FRDGTextureUAVDesc OutTextureUAVDesc(OutTextureRef);
+	// FRDGTextureDesc OutTextureDesc = FRDGTextureDesc::Create3D(
+	// 	FIntVector(RenderTarget->Desc.GetSize()),
+	// 	PF_FloatRGBA,
+	// 	FClearValueBinding(),
+	// 	TexCreate_UAV,//unordered view
+	// 	1,
+	// 	1); 
+	// // 2. Allocate memory with above desc and get a ref to it
+	// FRDGTextureRef OutTextureRef = GraphBuilder.CreateTexture(OutTextureDesc, TEXT("SingleScatteringLUT"));
+	// // 3. Make a UAV description from our Texture Ref
+	// FRDGTextureUAVDesc OutTextureUAVDesc(OutTextureRef);
 	// 4. Initialize it as our OutputTexture in our pass params
-	PassParameters->SingleScatteringLUT = GraphBuilder.CreateUAV(OutTextureUAVDesc);
+	PassParameters->SingleScatteringLUT = GraphBuilder.CreateUAV(RenderTarget);
 
 	// --- Creating a texture for the compute shader to write to SingleScatteringDensityLUT---
 	
-	FRDGTextureDesc OutTexture_dDesc = FRDGTextureDesc::Create3D(
-		FIntVector(RenderTarget_d->SizeX, RenderTarget_d->SizeY, RenderTarget_d->SizeZ),
-		PF_FloatRGBA,
-		FClearValueBinding(),
-		TexCreate_UAV,//unordered view
-		1,
-		1); 
-	
-	FRDGTextureRef OutTexture_dRef = GraphBuilder.CreateTexture(OutTexture_dDesc, TEXT("SingleScatteringDensityLUT"));
-	if (!OutTexture_dRef)
-	{
-		UE_LOG(LogTemp, Error, TEXT("OutTexture_dRef is null!"));
-	}
-	FRDGTextureUAVDesc OutTexture_dUAVDesc(OutTexture_dRef);
-	
-	PassParameters->SingleScatteringDensityLUT = GraphBuilder.CreateUAV(OutTexture_dUAVDesc);
+	// FRDGTextureDesc OutTexture_dDesc = FRDGTextureDesc::Create3D(
+	// 	FIntVector(RenderTarget_d->Desc.GetSize()),
+	// 	PF_FloatRGBA,
+	// 	FClearValueBinding(),
+	// 	TexCreate_UAV,//unordered view
+	// 	1,
+	// 	1); 
+	//
+	// FRDGTextureRef OutTexture_dRef = GraphBuilder.CreateTexture(OutTexture_dDesc, TEXT("SingleScatteringDensityLUT"));
+	// if (!OutTexture_dRef)
+	// {
+	// 	UE_LOG(LogTemp, Error, TEXT("OutTexture_dRef is null!"));
+	// }
+	// FRDGTextureUAVDesc OutTexture_dUAVDesc(OutTexture_dRef);
+	//
+	// PassParameters->SingleScatteringDensityLUT = GraphBuilder.CreateUAV(OutTexture_dUAVDesc);
+	PassParameters->SingleScatteringDensityLUT = GraphBuilder.CreateUAV(RenderTarget_d);
 	
 	// ------ Add the compute pass ------
 	// Get a reference to our global shader class
@@ -69,25 +70,24 @@ void FOceanCS::BuildAndExecuteGraph(FRHICommandListImmediate& RHICmdList,FWaterb
 
 
 	// ------ Extracting to pooled render target ------
-	TRefCountPtr<IPooledRenderTarget> PooledComputeTarget;
-	// Copy the result of compute shader from UAV to pooled renderT-target
-	GraphBuilder.QueueTextureExtraction(OutTextureRef, &PooledComputeTarget);
-	// Execute the graph
-	TRefCountPtr<IPooledRenderTarget> PooledComputeTarget_d;
-	GraphBuilder.QueueTextureExtraction(OutTexture_dRef, &PooledComputeTarget_d);
-	// Execute the graph
-	GraphBuilder.Execute();
-	
-
-	// Queue the UAV we wrote to for extraction 
-	RHICmdList.CopyToResolveTarget(PooledComputeTarget.GetReference()->GetRenderTargetItem().TargetableTexture,RenderTarget->GetResource()->TextureRHI , FResolveParams());
-	RHICmdList.CopyToResolveTarget(PooledComputeTarget_d.GetReference()->GetRenderTargetItem().TargetableTexture,RenderTarget_d->GetResource()->TextureRHI , FResolveParams());
+	// TRefCountPtr<IPooledRenderTarget> PooledComputeTarget;
+	// // Copy the result of compute shader from UAV to pooled renderT-target
+	// GraphBuilder.QueueTextureExtraction(OutTextureRef, &PooledComputeTarget);
+	// // Execute the graph
+	// TRefCountPtr<IPooledRenderTarget> PooledComputeTarget_d;
+	// GraphBuilder.QueueTextureExtraction(OutTexture_dRef, &PooledComputeTarget_d);
+	// // Execute the graph
+	// GraphBuilder.Execute();
+	//
+	// // Queue the UAV we wrote to for extraction 
+	// GraphBuilder.RHICmdList.CopyToResolveTarget(PooledComputeTarget.GetReference()->GetRenderTargetItem().TargetableTexture,RenderTarget->GetResource()->TextureRHI , FResolveParams());
+	// GraphBuilder.RHICmdList.CopyToResolveTarget(PooledComputeTarget_d.GetReference()->GetRenderTargetItem().TargetableTexture,RenderTarget_d->GetResource()->TextureRHI , FResolveParams());
 }
-void FOceanCS_m::BuildAndExecuteGraph(FRHICommandListImmediate& RHICmdList,FWaterbodyParameters WaterBody, FRHITexture* ScatteringDensityLUTTexture,
-							  FRHISamplerState* SamplerState, UTextureRenderTargetVolume* RenderTarget)
+void FOceanCS_m::BuildAndExecuteGraph(FRDGBuilder& GraphBuilder,FWaterbodyParameters WaterBody, FRDGTextureRef ScatteringDensityLUTTexture,
+							  FRHISamplerState* SamplerState, FRDGTextureRef RenderTarget)
 {
 	// We will use this to add resources (buffers) and passes to the render-graph
-	FRDGBuilder GraphBuilder(RHICmdList);
+	
 	// This is a pointer to the shader-parameters we declared in the .h
 	FParameters* PassParameters;
 	// We ask the RDG to allocate some memory for our shader-parameters
@@ -98,7 +98,7 @@ void FOceanCS_m::BuildAndExecuteGraph(FRHICommandListImmediate& RHICmdList,FWate
 	PassParameters->sampler_ScatteringDensityLUT = SamplerState;
 	// 1. Make a texture description 
 	FRDGTextureDesc OutTextureDesc = FRDGTextureDesc::Create3D(
-		FIntVector(RenderTarget->SizeX, RenderTarget->SizeY, RenderTarget->SizeZ),
+		FIntVector(RenderTarget->Desc.GetSize()),
 		PF_FloatRGBA,
 		FClearValueBinding(),
 		TexCreate_UAV,//unordered view
@@ -109,7 +109,7 @@ void FOceanCS_m::BuildAndExecuteGraph(FRHICommandListImmediate& RHICmdList,FWate
 	// 3. Make a UAV description from our Texture Ref
 	FRDGTextureUAVDesc OutTextureUAVDesc(OutTextureRef);
 	// 4. Initialize it as our OutputTexture in our pass params
-	PassParameters->ScatteringLUT_Output = GraphBuilder.CreateUAV(OutTextureUAVDesc);
+	PassParameters->ScatteringLUT_Output = GraphBuilder.CreateUAV(RenderTarget);
 	
 	// ------ Add the compute pass ------
 	// Get a reference to our global shader class
@@ -118,22 +118,22 @@ void FOceanCS_m::BuildAndExecuteGraph(FRHICommandListImmediate& RHICmdList,FWate
 	FComputeShaderUtils::AddPass(GraphBuilder, RDG_EVENT_NAME("Compute_m Pass"), ComputeShader, PassParameters, FIntVector(8, 8, 8));
 
 
-	// ------ Extracting to pooled render target ------
-	TRefCountPtr<IPooledRenderTarget> PooledComputeTarget;
-	// Copy the result of compute shader from UAV to pooled renderT-target
-	GraphBuilder.QueueTextureExtraction(OutTextureRef, &PooledComputeTarget);
-	// Execute the graph
-	GraphBuilder.Execute();
-	
-
-	// Queue the UAV we wrote to for extraction 
-	RHICmdList.CopyToResolveTarget(PooledComputeTarget.GetReference()->GetRenderTargetItem().TargetableTexture,RenderTarget->GetResource()->TextureRHI , FResolveParams());
+	// // ------ Extracting to pooled render target ------
+	// TRefCountPtr<IPooledRenderTarget> PooledComputeTarget;
+	// // Copy the result of compute shader from UAV to pooled renderT-target
+	// GraphBuilder.QueueTextureExtraction(OutTextureRef, &PooledComputeTarget);
+	// // Execute the graph
+	// GraphBuilder.Execute();
+	//
+	//
+	// // Queue the UAV we wrote to for extraction 
+	// GraphBuilder.RHICmdList.CopyToResolveTarget(PooledComputeTarget.GetReference()->GetRenderTargetItem().TargetableTexture,RenderTarget->GetResource()->TextureRHI , FResolveParams());
 }
-void FOceanCS_d::BuildAndExecuteGraph(FRHICommandListImmediate& RHICmdList, FWaterbodyParameters WaterBody,FRHITexture* ScatteringLUT_InputTexture,
-							  FRHISamplerState* SamplerState, UTextureRenderTargetVolume* RenderTarget)
+void FOceanCS_d::BuildAndExecuteGraph(FRDGBuilder& GraphBuilder, FWaterbodyParameters WaterBody,FRDGTextureRef ScatteringLUT_InputTexture,
+							  FRHISamplerState* SamplerState, FRDGTextureRef RenderTarget)
 {
 	// We will use this to add resources (buffers) and passes to the render-graph
-	FRDGBuilder GraphBuilder(RHICmdList);
+	
 	// This is a pointer to the shader-parameters we declared in the .h
 	FParameters* PassParameters;
 	// We ask the RDG to allocate some memory for our shader-parameters
@@ -145,7 +145,7 @@ void FOceanCS_d::BuildAndExecuteGraph(FRHICommandListImmediate& RHICmdList, FWat
 	PassParameters->sampler_ScatteringLUT_Input = SamplerState;
 	// 1. Make a texture description 
 	FRDGTextureDesc OutTextureDesc = FRDGTextureDesc::Create3D(
-		FIntVector(RenderTarget->SizeX, RenderTarget->SizeY, RenderTarget->SizeZ),
+		FIntVector(RenderTarget->Desc.GetSize()),
 		PF_FloatRGBA,
 		FClearValueBinding(),
 		TexCreate_RenderTargetable | TexCreate_ShaderResource | TexCreate_UAV,//unordered view
@@ -156,7 +156,7 @@ void FOceanCS_d::BuildAndExecuteGraph(FRHICommandListImmediate& RHICmdList, FWat
 	// 3. Make a UAV description from our Texture Ref
 	FRDGTextureUAVDesc OutTextureUAVDesc(OutTextureRef);
 	// 4. Initialize it as our OutputTexture in our pass params
-	PassParameters->ScatteringDensityLUT_Output = GraphBuilder.CreateUAV(OutTextureUAVDesc);
+	PassParameters->ScatteringDensityLUT_Output = GraphBuilder.CreateUAV(RenderTarget);
 	
 	// ------ Add the compute pass ------
 	// Get a reference to our global shader class
@@ -165,24 +165,24 @@ void FOceanCS_d::BuildAndExecuteGraph(FRHICommandListImmediate& RHICmdList, FWat
 	FComputeShaderUtils::AddPass(GraphBuilder, RDG_EVENT_NAME("Compute_d Pass"), ComputeShader, PassParameters, FIntVector(8, 8, 8));
 
 
-	// ------ Extracting to pooled render target ------
-	TRefCountPtr<IPooledRenderTarget> PooledComputeTarget;
-	// Copy the result of compute shader from UAV to pooled renderT-target
-	GraphBuilder.QueueTextureExtraction(OutTextureRef, &PooledComputeTarget);
-	// Execute the graph
-	GraphBuilder.Execute();
-	
-
-	// Queue the UAV we wrote to for extraction 
-	RHICmdList.CopyToResolveTarget(PooledComputeTarget.GetReference()->GetRenderTargetItem().TargetableTexture,RenderTarget->GetResource()->TextureRHI , FResolveParams());
-
+	// // ------ Extracting to pooled render target ------
+	// TRefCountPtr<IPooledRenderTarget> PooledComputeTarget;
+	// // Copy the result of compute shader from UAV to pooled renderT-target
+	// GraphBuilder.QueueTextureExtraction(OutTextureRef, &PooledComputeTarget);
+	// // Execute the graph
+	//  GraphBuilder.Execute();
+	//
+	//
+	// // Queue the UAV we wrote to for extraction 
+	// GraphBuilder.RHICmdList.CopyToResolveTarget(PooledComputeTarget.GetReference()->GetRenderTargetItem().TargetableTexture,RenderTarget->GetResource()->TextureRHI , FResolveParams());
+	//
 }
-void FOceanCS_s::BuildAndExecuteGraph(FRHICommandListImmediate& RHICmdList, const TArray<FRHITexture*> &MultiScatteringLUTsTexture,
-		const TArray<FRHITexture*> &ScatteringDensityLUTsTexture, const TArray<FRHISamplerState*> &MultiSamplerState,
+void FOceanCS_s::BuildAndExecuteGraph(FRDGBuilder& GraphBuilder, const TArray<FRDGTextureRef> &MultiScatteringLUTsTexture,
+		const TArray<FRDGTextureRef> &ScatteringDensityLUTsTexture, const TArray<FRHISamplerState*> &MultiSamplerState,
 		const TArray<FRHISamplerState*> &DensitySamplerState,  UTextureRenderTargetVolume* RenderTarget, UTextureRenderTargetVolume* RenderTarget_m )
 {
 	// We will use this to add resources (buffers) and passes to the render-graph
-	FRDGBuilder GraphBuilder(RHICmdList);
+
 	// This is a pointer to the shader-parameters we declared in the .h
 	FParameters* PassParameters;
 	// We ask the RDG to allocate some memory for our shader-parameters
@@ -201,7 +201,7 @@ void FOceanCS_s::BuildAndExecuteGraph(FRHICommandListImmediate& RHICmdList, cons
 		FIntVector(RenderTarget->SizeX, RenderTarget->SizeY, RenderTarget->SizeZ),
 		PF_FloatRGBA,
 		FClearValueBinding(),
-		TexCreate_UAV,//unordered view
+		TexCreate_RenderTargetable | TexCreate_ShaderResource | TexCreate_UAV,//unordered view
 		1,
 		1); 
 	// 2. Allocate memory with above desc and get a ref to it
@@ -239,16 +239,17 @@ void FOceanCS_s::BuildAndExecuteGraph(FRHICommandListImmediate& RHICmdList, cons
 	// Copy the result of compute shader from UAV to pooled renderT-target
 	GraphBuilder.QueueTextureExtraction(OutTextureRef, &PooledComputeTarget);
 	// Execute the graph
-	//GraphBuilder.Execute();
 	TRefCountPtr<IPooledRenderTarget> PooledComputeTarget_d;
 	GraphBuilder.QueueTextureExtraction(OutTexture_dRef, &PooledComputeTarget_d);
 	// Execute the graph
 	GraphBuilder.Execute();
 	
+	GraphBuilder.RHICmdList.CopyTexture(PooledComputeTarget.GetReference()->GetRenderTargetItem().TargetableTexture,RenderTarget->GetResource()->TextureRHI , FRHICopyTextureInfo());
+	GraphBuilder.RHICmdList.CopyTexture(PooledComputeTarget_d.GetReference()->GetRenderTargetItem().TargetableTexture,RenderTarget_m->GetResource()->TextureRHI , FRHICopyTextureInfo());
 
 	// Queue the UAV we wrote to for extraction 
-	RHICmdList.CopyToResolveTarget(PooledComputeTarget.GetReference()->GetRenderTargetItem().TargetableTexture,RenderTarget->GetResource()->TextureRHI , FResolveParams());
-	RHICmdList.CopyToResolveTarget(PooledComputeTarget_d.GetReference()->GetRenderTargetItem().TargetableTexture,RenderTarget_m->GetResource()->TextureRHI , FResolveParams());
+	// GraphBuilder.RHICmdList.CopyToResolveTarget(PooledComputeTarget.GetReference()->GetRenderTargetItem().TargetableTexture,RenderTarget->GetResource()->TextureRHI , FResolveParams());
+	// GraphBuilder.RHICmdList.CopyToResolveTarget(PooledComputeTarget_d.GetReference()->GetRenderTargetItem().TargetableTexture,RenderTarget_m->GetResource()->TextureRHI , FResolveParams());
 
 	
 	

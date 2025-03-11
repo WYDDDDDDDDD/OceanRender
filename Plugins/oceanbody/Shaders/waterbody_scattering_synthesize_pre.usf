@@ -27,8 +27,8 @@ SamplerState sampler_ScatteringDensityLUTs_1;
 SamplerState sampler_ScatteringDensityLUTs_2;
 SamplerState sampler_ScatteringDensityLUTs_3;
 SamplerState sampler_ScatteringDensityLUTs_0;
-RWTexture3D<float4> ScatteringLUT ;
-RWTexture3D<float4> MultiScatteringDensityLUT;
+RWTexture3D<float4> ScatteringLUT : register(u0);
+RWTexture3D<float4> MultiScatteringDensityLUT : register(u1);
 [numthreads(8, 8, 8)]
 void MainCS(uint3 id : SV_DispatchThreadID)
 {

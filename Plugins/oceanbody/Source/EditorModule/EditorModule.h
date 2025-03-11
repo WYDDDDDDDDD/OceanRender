@@ -39,8 +39,5 @@ public:
 	
 	//命令A
 	TSharedPtr<class FUICommandInfo > Command;
-	// TSharedPtr<class FUICommandInfo > Command_m;
-	// TSharedPtr<class FUICommandInfo > Command_d;
-	// TSharedPtr<class FUICommandInfo > Command_s;
 	
 };
