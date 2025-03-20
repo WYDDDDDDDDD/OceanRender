@@ -61,12 +61,18 @@ void FOceanCS::BuildAndExecuteGraph(FRDGBuilder& GraphBuilder,FWaterbodyParamete
 	//
 	// PassParameters->SingleScatteringDensityLUT = GraphBuilder.CreateUAV(OutTexture_dUAVDesc);
 	PassParameters->SingleScatteringDensityLUT = GraphBuilder.CreateUAV(RenderTarget_d);
-	
+	const FIntVector TextureSize = RenderTarget_d->Desc.GetSize();
+	const FIntVector ThreadsPerGroup(8, 8, 8); // 与[numthreads(8,8,8)]一致
+	const FIntVector GroupCount(
+		FMath::DivideAndRoundUp(TextureSize.X, ThreadsPerGroup.X),
+		FMath::DivideAndRoundUp(TextureSize.Y, ThreadsPerGroup.Y),
+		FMath::DivideAndRoundUp(TextureSize.Z, ThreadsPerGroup.Z)
+	);
 	// ------ Add the compute pass ------
 	// Get a reference to our global shader class
 	TShaderMapRef<FOceanCS> ComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
 	// Add the compute shader pass to the render graph
-	FComputeShaderUtils::AddPass(GraphBuilder, RDG_EVENT_NAME("Compute Pass"), ComputeShader, PassParameters, FIntVector(8, 8, 8));
+	FComputeShaderUtils::AddPass(GraphBuilder, RDG_EVENT_NAME("Compute Pass"), ComputeShader, PassParameters, GroupCount);
 
 
 	// ------ Extracting to pooled render target ------
@@ -96,26 +102,32 @@ void FOceanCS_m::BuildAndExecuteGraph(FRDGBuilder& GraphBuilder,FWaterbodyParame
 	PassParameters->ScatteringDensityLUT = ScatteringDensityLUTTexture;
 	SamplerState = TStaticSamplerState<SF_Bilinear, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI();
 	PassParameters->sampler_ScatteringDensityLUT = SamplerState;
-	// 1. Make a texture description 
-	FRDGTextureDesc OutTextureDesc = FRDGTextureDesc::Create3D(
-		FIntVector(RenderTarget->Desc.GetSize()),
-		PF_FloatRGBA,
-		FClearValueBinding(),
-		TexCreate_UAV,//unordered view
-		1,
-		1); 
-	// 2. Allocate memory with above desc and get a ref to it
-	FRDGTextureRef OutTextureRef = GraphBuilder.CreateTexture(OutTextureDesc, TEXT("ScatteringLUT_Output"));
-	// 3. Make a UAV description from our Texture Ref
-	FRDGTextureUAVDesc OutTextureUAVDesc(OutTextureRef);
+	// // 1. Make a texture description 
+	// FRDGTextureDesc OutTextureDesc = FRDGTextureDesc::Create3D(
+	// 	FIntVector(RenderTarget->Desc.GetSize()),
+	// 	PF_A32B32G32R32F,
+	// 	FClearValueBinding(),
+	// 	TexCreate_UAV,//unordered view
+	// 	1,
+	// 	1); 
+	// // 2. Allocate memory with above desc and get a ref to it
+	// FRDGTextureRef OutTextureRef = GraphBuilder.CreateTexture(OutTextureDesc, TEXT("ScatteringLUT_Output"));
+	// // 3. Make a UAV description from our Texture Ref
+	// FRDGTextureUAVDesc OutTextureUAVDesc(OutTextureRef);
 	// 4. Initialize it as our OutputTexture in our pass params
 	PassParameters->ScatteringLUT_Output = GraphBuilder.CreateUAV(RenderTarget);
-	
+	const FIntVector TextureSize = RenderTarget->Desc.GetSize();
+	const FIntVector ThreadsPerGroup(8, 8, 8); // 与[numthreads(8,8,8)]一致
+	const FIntVector GroupCount(
+		FMath::DivideAndRoundUp(TextureSize.X, ThreadsPerGroup.X),
+		FMath::DivideAndRoundUp(TextureSize.Y, ThreadsPerGroup.Y),
+		FMath::DivideAndRoundUp(TextureSize.Z, ThreadsPerGroup.Z)
+	);
 	// ------ Add the compute pass ------
 	// Get a reference to our global shader class
 	TShaderMapRef<FOceanCS_m> ComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
 	// Add the compute shader pass to the render graph
-	FComputeShaderUtils::AddPass(GraphBuilder, RDG_EVENT_NAME("Compute_m Pass"), ComputeShader, PassParameters, FIntVector(8, 8, 8));
+	FComputeShaderUtils::AddPass(GraphBuilder, RDG_EVENT_NAME("Compute_m Pass"), ComputeShader, PassParameters, GroupCount);
 
 
 	// // ------ Extracting to pooled render target ------
@@ -144,25 +156,31 @@ void FOceanCS_d::BuildAndExecuteGraph(FRDGBuilder& GraphBuilder, FWaterbodyParam
 	SamplerState = TStaticSamplerState<SF_Bilinear, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI();
 	PassParameters->sampler_ScatteringLUT_Input = SamplerState;
 	// 1. Make a texture description 
-	FRDGTextureDesc OutTextureDesc = FRDGTextureDesc::Create3D(
-		FIntVector(RenderTarget->Desc.GetSize()),
-		PF_FloatRGBA,
-		FClearValueBinding(),
-		TexCreate_RenderTargetable | TexCreate_ShaderResource | TexCreate_UAV,//unordered view
-		1,
-		1); 
-	// 2. Allocate memory with above desc and get a ref to it
-	FRDGTextureRef OutTextureRef = GraphBuilder.CreateTexture(OutTextureDesc, TEXT("ScatteringDensityLUT_Output"));
+	// FRDGTextureDesc OutTextureDesc = FRDGTextureDesc::Create3D(
+	// 	FIntVector(RenderTarget->Desc.GetSize()),
+	// 	PF_A32B32G32R32F,
+	// 	FClearValueBinding(),
+	// 	TexCreate_RenderTargetable | TexCreate_ShaderResource | TexCreate_UAV,//unordered view
+	// 	1,
+	// 	1); 
+	// // 2. Allocate memory with above desc and get a ref to it
+	// FRDGTextureRef OutTextureRef = GraphBuilder.CreateTexture(OutTextureDesc, TEXT("ScatteringDensityLUT_Output"));
 	// 3. Make a UAV description from our Texture Ref
-	FRDGTextureUAVDesc OutTextureUAVDesc(OutTextureRef);
+	// FRDGTextureUAVDesc OutTextureUAVDesc(OutTextureRef);
 	// 4. Initialize it as our OutputTexture in our pass params
 	PassParameters->ScatteringDensityLUT_Output = GraphBuilder.CreateUAV(RenderTarget);
-	
+	const FIntVector TextureSize = RenderTarget->Desc.GetSize();
+	const FIntVector ThreadsPerGroup(8, 8, 8); // 与[numthreads(8,8,8)]一致
+	const FIntVector GroupCount(
+		FMath::DivideAndRoundUp(TextureSize.X, ThreadsPerGroup.X),
+		FMath::DivideAndRoundUp(TextureSize.Y, ThreadsPerGroup.Y),
+		FMath::DivideAndRoundUp(TextureSize.Z, ThreadsPerGroup.Z)
+	);
 	// ------ Add the compute pass ------
 	// Get a reference to our global shader class
 	TShaderMapRef<FOceanCS_d> ComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
 	// Add the compute shader pass to the render graph
-	FComputeShaderUtils::AddPass(GraphBuilder, RDG_EVENT_NAME("Compute_d Pass"), ComputeShader, PassParameters, FIntVector(8, 8, 8));
+	FComputeShaderUtils::AddPass(GraphBuilder, RDG_EVENT_NAME("Compute_d Pass"), ComputeShader, PassParameters, GroupCount);
 
 
 	// // ------ Extracting to pooled render target ------
@@ -189,7 +207,11 @@ void FOceanCS_s::BuildAndExecuteGraph(FRDGBuilder& GraphBuilder, const TArray<FR
 	PassParameters = GraphBuilder.AllocParameters<FOceanCS_s::FParameters>();
 	for (int32 i = 0; i < NUM_SCATTERING_ORDERS; ++i)
 	{
-		PassParameters->MultiScatteringLUTs[i] = MultiScatteringLUTsTexture[i];
+		if(MultiScatteringLUTsTexture[i]!=nullptr)
+		{
+			PassParameters->MultiScatteringLUTs[i] = MultiScatteringLUTsTexture[i];
+		}
+		
 		PassParameters->ScatteringDensityLUTs[i] = ScatteringDensityLUTsTexture[i];
 		PassParameters->sampler_ScatteringDensityLUTs[i] = TStaticSamplerState<SF_Point, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI();
 		PassParameters->sampler_MultiScatteringLUTs[i] = TStaticSamplerState<SF_Point, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI();
@@ -199,7 +221,7 @@ void FOceanCS_s::BuildAndExecuteGraph(FRDGBuilder& GraphBuilder, const TArray<FR
 	// 1. Make a texture description 
 	FRDGTextureDesc OutTextureDesc = FRDGTextureDesc::Create3D(
 		FIntVector(RenderTarget->SizeX, RenderTarget->SizeY, RenderTarget->SizeZ),
-		PF_FloatRGBA,
+		RenderTarget->GetFormat(),
 		FClearValueBinding(),
 		TexCreate_RenderTargetable | TexCreate_ShaderResource | TexCreate_UAV,//unordered view
 		1,
@@ -226,12 +248,18 @@ void FOceanCS_s::BuildAndExecuteGraph(FRDGBuilder& GraphBuilder, const TArray<FR
 	FRDGTextureUAVDesc OutTexture_dUAVDesc(OutTexture_dRef);
 	
 	PassParameters->MultiScatteringDensityLUT = GraphBuilder.CreateUAV(OutTexture_dUAVDesc);
-	
+	const FIntVector TextureSize = OutTexture_dRef->Desc.GetSize();
+	const FIntVector ThreadsPerGroup(8, 8, 8); // 与[numthreads(8,8,8)]一致
+	const FIntVector GroupCount(
+		FMath::DivideAndRoundUp(TextureSize.X, ThreadsPerGroup.X),
+		FMath::DivideAndRoundUp(TextureSize.Y, ThreadsPerGroup.Y),
+		FMath::DivideAndRoundUp(TextureSize.Z, ThreadsPerGroup.Z)
+	);
 	// ------ Add the compute pass ------
 	// Get a reference to our global shader class
 	TShaderMapRef<FOceanCS_s> ComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
 	// Add the compute shader pass to the render graph
-	FComputeShaderUtils::AddPass(GraphBuilder, RDG_EVENT_NAME("Compute_s Pass"), ComputeShader, PassParameters, FIntVector(8, 8, 8));
+	FComputeShaderUtils::AddPass(GraphBuilder, RDG_EVENT_NAME("Compute_s Pass"), ComputeShader, PassParameters, GroupCount);
 
 
 	// ------ Extracting to pooled render target ------

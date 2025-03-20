@@ -4,8 +4,10 @@
 #include "CoreMinimal.h"
 #include "Framework/Commands/Commands.h"
 #include "CoreMinimal.h"
+#include "IRenderDocPlugin.h"
 #include "LevelEditor.h"
 #include"oceanbody/Public/OceanBody.h"
+
 
 class FOceanEditorModule : public IModuleInterface
 {
@@ -15,9 +17,11 @@ public:
 	virtual void ShutdownModule() override;
 	void CreateToolbarButton();
 	void Command_Tex();
+	void InitRenderdoc();
 	
 private:
 	FoceanbodyModule*  oceanbodyModule;
+	IRenderDocPlugin&  RenderDocAPI= IRenderDocPlugin::Get();
 	TSharedPtr<class FUICommandList> CommandList;
 };
 class FOceanCommands : public TCommands<FOceanCommands>

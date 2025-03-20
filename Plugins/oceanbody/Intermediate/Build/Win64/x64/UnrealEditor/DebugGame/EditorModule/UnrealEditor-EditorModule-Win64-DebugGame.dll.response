@@ -46,6 +46,7 @@
 "..\Intermediate\Build\Win64\x64\UnrealEditor\Development\Projects\UnrealEditor-Projects.lib"
 "..\Intermediate\Build\Win64\x64\UnrealEditor\Development\Core\UnrealEditor-Core.lib"
 "D:\UnrealProjects\ocean1\Plugins\oceanbody\Intermediate\Build\Win64\x64\UnrealEditor\DebugGame\OceanBody\UnrealEditor-OceanBody-Win64-DebugGame.lib"
+"..\Plugins\Developer\RenderDocPlugin\Intermediate\Build\Win64\x64\UnrealEditor\Development\RenderDocPlugin\UnrealEditor-RenderDocPlugin.lib"
 "delayimp.lib"
 "wininet.lib"
 "rpcrt4.lib"

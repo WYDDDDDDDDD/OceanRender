@@ -11,22 +11,25 @@
 // Texture3D ScatteringDensityLUTs[NUM_SCATTERING_ORDERS];
 // SamplerState sampler_MultiScatteringLUTs[NUM_SCATTERING_ORDERS];
 // SamplerState sampler_ScatteringDensityLUTs[NUM_SCATTERING_ORDERS];
+//Texture3D MultiScatteringLUTs[NUM_SCATTERING_ORDERS];
+Texture3D MultiScatteringLUTs_0;
 Texture3D MultiScatteringLUTs_1;
 Texture3D MultiScatteringLUTs_2;
 Texture3D MultiScatteringLUTs_3;
-Texture3D MultiScatteringLUTs_0;
+SamplerState sampler_MultiScatteringLUTs_0;
 SamplerState sampler_MultiScatteringLUTs_1;
 SamplerState sampler_MultiScatteringLUTs_2;
 SamplerState sampler_MultiScatteringLUTs_3;
-SamplerState sampler_MultiScatteringLUTs_0;
+
+Texture3D ScatteringDensityLUTs_0;
 Texture3D ScatteringDensityLUTs_1;
 Texture3D ScatteringDensityLUTs_2;
 Texture3D ScatteringDensityLUTs_3;
-Texture3D ScatteringDensityLUTs_0;
+SamplerState sampler_ScatteringDensityLUTs_0;
 SamplerState sampler_ScatteringDensityLUTs_1;
 SamplerState sampler_ScatteringDensityLUTs_2;
 SamplerState sampler_ScatteringDensityLUTs_3;
-SamplerState sampler_ScatteringDensityLUTs_0;
+
 RWTexture3D<float4> ScatteringLUT : register(u0);
 RWTexture3D<float4> MultiScatteringDensityLUT : register(u1);
 [numthreads(8, 8, 8)]
@@ -56,6 +59,9 @@ void MainCS(uint3 id : SV_DispatchThreadID)
 //    value += texture(MultiScatteringLUTs[1], uv).rgb;
 //    value += texture(MultiScatteringLUTs[2], uv).rgb;
 //    value += texture(MultiScatteringLUTs[3], uv).rgb;
+    //ScatteringLUT[id] = float4( MultiScatteringLUTs_0.Sample(sampler_MultiScatteringLUTs_0, uv).rgb,0);
+    
     ScatteringLUT[id] = float4(value,0);
-    MultiScatteringDensityLUT[id] = float4(density, 0);
-}
+    
+    MultiScatteringDensityLUT[id] = float4(density,0);
+}                  

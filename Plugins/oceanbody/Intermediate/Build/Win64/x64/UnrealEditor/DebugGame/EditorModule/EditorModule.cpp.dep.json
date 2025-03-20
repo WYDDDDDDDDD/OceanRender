@@ -7,6 +7,10 @@
         "Includes": [
             "d:\\unrealprojects\\ocean1\\plugins\\oceanbody\\intermediate\\build\\win64\\x64\\unrealeditor\\debuggame\\editormodule\\definitions.editormodule.h",
             "d:\\unrealprojects\\ocean1\\plugins\\oceanbody\\source\\editormodule\\editormodule.h",
+            "c:\\unrealengine-5.2\\engine\\plugins\\developer\\renderdocplugin\\source\\renderdocplugin\\public\\irenderdocplugin.h",
+            "c:\\unrealengine-5.2\\engine\\source\\runtime\\inputdevice\\public\\iinputdevicemodule.h",
+            "c:\\unrealengine-5.2\\engine\\source\\runtime\\inputdevice\\public\\iinputdevice.h",
+            "c:\\unrealengine-5.2\\engine\\source\\runtime\\rendercore\\public\\irendercaptureprovider.h",
             "c:\\unrealengine-5.2\\engine\\source\\editor\\leveleditor\\public\\leveleditor.h",
             "c:\\unrealengine-5.2\\engine\\source\\runtime\\slate\\public\\framework\\docking\\layoutservice.h",
             "c:\\unrealengine-5.2\\engine\\source\\editor\\leveleditor\\public\\ileveleditor.h",
@@ -70,7 +74,8 @@
             "c:\\unrealengine-5.2\\engine\\source\\runtime\\rendercore\\public\\rendergraphbuilder.inl",
             "c:\\unrealengine-5.2\\engine\\source\\runtime\\rendercore\\public\\rendergraphutils.h",
             "c:\\unrealengine-5.2\\engine\\source\\runtime\\engine\\classes\\engine\\volumetexture.h",
-            "c:\\unrealengine-5.2\\engine\\intermediate\\build\\win64\\unrealeditor\\inc\\engine\\uht\\volumetexture.generated.h"
+            "c:\\unrealengine-5.2\\engine\\intermediate\\build\\win64\\unrealeditor\\inc\\engine\\uht\\volumetexture.generated.h",
+            "c:\\unrealengine-5.2\\engine\\source\\thirdparty\\renderdoc\\renderdoc_app.h"
         ],
         "ImportedModules": [],
         "ImportedHeaderUnits": []

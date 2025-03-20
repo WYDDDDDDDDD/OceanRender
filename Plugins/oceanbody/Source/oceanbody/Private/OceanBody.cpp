@@ -51,8 +51,8 @@ void FoceanbodyModule::InitializeWaterbody(FWaterbodyParameters& WaterBody)
 	WaterBody.gb = -0.2;      // 后向散射HG相位函数中的g，范围[-1, 0]
 	WaterBody.hdr_exposure = 10;
 	WaterBody.C = 0.01;
-	WaterBody.absorbtion_d_400nm = 0.0f;
-	WaterBody.absorbtion_y_440nm = 0.0f;
+	WaterBody.absorbtion_d_400nm = 0.01f;
+	WaterBody.absorbtion_y_440nm = 0.01f;
 
 	
 	WaterBody.CDOM_absorbtion = FVector3f(0.034735f, 0.214381f, 1.0f) * WaterBody.absorbtion_y_440nm;
